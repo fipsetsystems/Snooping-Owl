@@ -57,6 +57,21 @@ in production).
 added without changing `v` unless breaking; a breaking change bumps `v`
 and the server rejects older versions.
 
+## Live dashboard channel (/live)
+
+Separate WebSocket endpoint for dashboards: `ws://<host>:<port>/live`.
+No authentication yet (dev phase). Server → dashboard messages:
+
+| type           | fields | purpose |
+|----------------|--------|---------|
+| `snapshot`     | `agents: AgentView[]` | sent once on connect |
+| `agent_joined` | `agent: AgentView` | broadcast when an agent registers |
+| `agent_left`   | `deviceId` | broadcast when an agent disconnects |
+| `tick`         | —      | keepalive every 25 s (Cloudflare edge idle timeout) |
+
+`AgentView` = `{ deviceId, agentVersion, os, remote, connectedAt }`
+(read-only live state; never persisted).
+
 ## Security notes (current phase)
 
 - `token` is a shared secret from `config.json` / server env

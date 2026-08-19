@@ -4,14 +4,14 @@ Authorized BPO workstation operations/telemetry platform.
 
 - **Agent**: C++ / Qt 6 / CMake — Windows Service on Windows 10/11
 - **Server**: Node.js + TypeScript — Fastify + WebSocket gateway
-- **Dashboard**: Next.js + React + TypeScript (future phase)
+- **Dashboard**: Next.js + React + TypeScript — live workstation state
 
-## Current status: Phase 2 — agent ↔ server protocol v1
+## Current status: Phase 3 — live dashboard
 
-The agent connects to the server over WebSocket (JSON protocol v1), performs
-a token-authenticated `hello`, and heartbeats every 15 s with reconnect
-backoff. Both sides run as CLI for now; the dashboard and per-device auth
-come in later phases.
+The dashboard (Next.js, App Router) subscribes to the backend `/live`
+channel over WebSocket and shows live workstation state — no polling, no
+mock data. Agent and server remain CLI-first; telemetry, enrollment, and
+persistence come in later phases.
 
 ## Layout
 
@@ -24,7 +24,7 @@ agent/            C++/Qt 6 agent
   src/protocol/       WebSocket link to the server (protocol v1)
   installer/          WiX v7 project (optional, Windows-only build)
 server/           Node.js + TypeScript — Fastify WebSocket gateway
-dashboard/        Next.js + React (future)
+dashboard/        Next.js + React — live workstation state
 docs/             architecture decisions, protocol spec
 ```
 
@@ -51,8 +51,12 @@ available for enterprise packaging if needed.
 ## Running (dev, CLI)
 
 ```sh
-# Server (http://127.0.0.1:8080, ws://127.0.0.1:8080/ws/agent)
+# Server (http://127.0.0.1:8080, ws://127.0.0.1:8080/ws/agent, /live)
 cd server && npm install && npm run dev
+
+# Dashboard (http://127.0.0.1:3000 — set NEXT_PUBLIC_SERVER_URL to the
+# server origin if not localhost, e.g. NEXT_PUBLIC_SERVER_URL=wss://...)
+cd dashboard && npm install && npm run dev
 
 # Agent (connects from config.json defaults)
 ./build/agent --run

@@ -24,6 +24,7 @@ export class AgentSession {
     private readonly socket: WebSocket,
     private readonly hello: HelloMessage,
     private readonly timeoutMs: number,
+    readonly remote: string,
   ) {
     this.deviceId = hello.deviceId;
     this.agentVersion = hello.agentVersion;

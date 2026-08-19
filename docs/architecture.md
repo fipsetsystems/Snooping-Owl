@@ -25,19 +25,19 @@ Next.js + React + TypeScript dashboard
 PostgreSQL
 ```
 
-## Phase 2 Scope (this phase)
+## Phase 3 Scope (this phase)
 
-Agent ↔ server protocol v1 over WebSocket, CLI-only:
+Live dashboard, realtime only — no persistence:
 
-- Server gateway: Node.js + TypeScript, **Fastify + @fastify/websocket**
-- Token-authenticated `hello`, 15 s heartbeats, 45 s server watchdog
-- Agent reconnect with exponential backoff (1 s → 30 s)
-- Stable per-machine device ID (`device.id`, seeded from machine unique ID)
+- Next.js + React + TypeScript (App Router), Vercel-ready
+- Browser → backend `/live` WebSocket: snapshot on connect, then deltas
+- Theme tokens in `:root` (CSS variables), no raw hex scattered in UI
+- No polling; keepalive `tick` every 25 s (Cloudflare edge idle timeout)
 
-Explicitly NOT in Phase 2: telemetry, commands, enrollment, dashboard,
-database schema, per-device auth.
+Explicitly NOT in Phase 3: telemetry, commands, enrollment, persistence,
+event schema, dashboard auth.
 
-## Decisions (Phase 1 + Phase 2)
+## Decisions (Phase 1 + Phase 2 + Phase 3)
 
 | Decision | Choice | Rationale |
 |---|---|---|
@@ -54,6 +54,9 @@ database schema, per-device auth.
 | Server runtime | Node.js + TypeScript | Already installed; shared type discipline with dashboard |
 | Server framework | Fastify + @fastify/websocket | Fast, structured HTTP+WS in one TypeScript codebase |
 | Realtime protocol | Raw WebSocket, JSON, versioned (`v` field) | Lean agent link; no framework lock-in on the wire |
+| Dashboard realtime | Browser WSS → backend `/live` | One hop, sub-second latency; rejected Supabase Realtime (extra hop) and SSE (second transport) at 250 scale |
+| Dashboard hosting | Vercel (pages only; WS lives in the browser) | Spec §6; never serverless WS |
+| Theme | Tokenized CSS variables in `:root` | Design tokens provided by product owner |
 | Auth (current) | Shared token (`AGENT_TOKEN` / `connection.token`) | Dev-grade; per-device auth/enrollment later |
 
 ## Reserved Boundaries

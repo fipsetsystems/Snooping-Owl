@@ -26,6 +26,23 @@ export interface HeartbeatAckMessage {
   seq: number;
 }
 
+// ---- Live dashboard channel (/live) --------------------------------
+
+/** Read-only view of one connected agent, pushed to dashboards. */
+export interface AgentView {
+  deviceId: string;
+  agentVersion: string;
+  os: string;
+  remote: string;
+  connectedAt: string; // ISO-8601 UTC
+}
+
+export type LiveMessage =
+  | { type: "snapshot"; agents: AgentView[] }
+  | { type: "agent_joined"; agent: AgentView }
+  | { type: "agent_left"; deviceId: string }
+  | { type: "tick" }; // keepalive (Cloudflare edge idle timeout)
+
 export type AgentMessage = HelloMessage | HeartbeatMessage;
 export type ServerMessage = HelloAckMessage | HeartbeatAckMessage;
 
@@ -52,5 +69,9 @@ export function isAgentMessage(value: unknown): value is AgentMessage {
 }
 
 export function serialize(message: ServerMessage): string {
+  return JSON.stringify(message);
+}
+
+export function serializeLive(message: LiveMessage): string {
   return JSON.stringify(message);
 }
