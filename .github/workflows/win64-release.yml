@@ -43,10 +43,15 @@ jobs:
           # Qt ships no Windows static kits; build the subset the agent
           # needs (Core/Network/WebSockets) statically so the release is a
           # single agent.exe with no DLLs or plugins.
-          pip install "git+https://github.com/miurahr/aqtinstall.git@f383b3c7d9658e881bd8ce8810057393bd934ee1"
-          aqt install-src windows desktop 6.11.2 -m qtbase qtwebsockets -O C:\Qt-src
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force C:\Qt-src | Out-Null
+          foreach ($m in @("qtbase", "qtwebsockets")) {
+            $u = "https://download.qt.io/archive/qt/6.11/6.11.2/submodules/${m}-everywhere-src-6.11.2.tar.xz"
+            Invoke-WebRequest -Uri $u -OutFile "C:\Qt-src\${m}.tar.xz"
+            tar -xf "C:\Qt-src\${m}.tar.xz" -C C:\Qt-src
+          }
 
-          cmake -S C:\Qt-src\qtbase -B C:\Qt-src\qtbase-build -G Ninja `
+          cmake -S C:\Qt-src\qtbase-everywhere-src-6.11.2 -B C:\Qt-src\qtbase-build -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
             -DCMAKE_INSTALL_PREFIX=C:\QtStatic `
             -DBUILD_SHARED_LIBS=OFF `
@@ -55,8 +60,8 @@ jobs:
             -DQT_BUILD_EXAMPLES=OFF -DQT_BUILD_TESTS=OFF
           cmake --build C:\Qt-src\qtbase-build --target install
 
-          cmake -S C:\Qt-src\qtwebsockets -B C:\Qt-src\qtwebsockets-build `
-            -G Ninja -DCMAKE_BUILD_TYPE=Release `
+          cmake -S C:\Qt-src\qtwebsockets-everywhere-src-6.11.2 `
+            -B C:\Qt-src\qtwebsockets-build -G Ninja -DCMAKE_BUILD_TYPE=Release `
             -DCMAKE_INSTALL_PREFIX=C:\QtStatic `
             -DCMAKE_PREFIX_PATH=C:\QtStatic `
             -DBUILD_SHARED_LIBS=OFF `
