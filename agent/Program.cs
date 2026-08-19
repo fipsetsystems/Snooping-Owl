@@ -9,8 +9,28 @@ namespace SnoopingOwl.Agent;
 
 public class Program
 {
+    // Priority: env var > registry (HKLM\Software\SnoopingOwl\BackendUrl) > default
     private static readonly string WsUrl = Environment.GetEnvironmentVariable("SNOOPINGOWL_WS_URL")
-        ?? "wss://localhost:8432/ws";
+        ?.Trim()
+        ?? GetBackendFromRegistry()
+        ?? "wss://YOUR_CF_TUNNEL_ID.trycloudflare.com/ws";
+
+    private static string GetBackendFromRegistry()
+    {
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(@"Software\SnoopingOwl");
+            if (key != null && key.GetValue("BackendUrl") is string url)
+            {
+                return url;
+            }
+        }
+        catch
+        {
+            // Registry not available (e.g., running as console) - fall through to default
+        }
+        return null;
+    }
 
     public static async Task Main(string[] args)
     {
@@ -28,8 +48,8 @@ public class Program
 
     static async Task RunAsConsole()
     {
-        Console.WriteLine("Running SnoopingOwl Agent as console (testing mode)");
-        Console.WriteLine($"Using WSS endpoint: {WsUrl}");
+        Console.WriteLine($"SnoopingOwl Agent - Console Mode");
+        Console.WriteLine($"WSS Endpoint: {WsUrl}");
         Console.WriteLine("Press Ctrl+C to exit");
 
         using var cts = new CancellationTokenSource();

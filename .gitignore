@@ -1,4 +1,4 @@
-# .NET specific
+# .NET specific - build outputs should not be committed
 bin/
 obj/
 **/*.user
@@ -8,8 +8,8 @@ obj/
 .vs/
 *.sln.iml
 
-# Publish output
+# Publish output directory (published executables)
 published/
 
-# InnoSetup
-*.iss
+# InnoSetup installer script IS tracked - it defines the deployment config
+; NOTE: Setup.iss is kept out of gitignore so installer config is version-controlled

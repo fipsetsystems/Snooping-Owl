@@ -1,15 +1,18 @@
-name: Build and Test SnoopingOwl Agent
+name: Build and Release SnoopingOwl
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
+    types: [opened, synchronize, reopened]
 
 jobs:
-  build:
-    name: Build .NET 8 Agent
+  build-agent:
+    name: Build .NET Agent
     runs-on: windows-latest
+    outputs:
+      agent-exe-path: ${{ steps.build-output.outputs.agent-exe-path }}
 
     steps:
       - name: Cancel previous workflow runs
@@ -26,14 +29,87 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore agent/SnoopingOwl.Agent.csproj
 
-      - name: Build
+      - name: Build Agent
         run: dotnet build agent/SnoopingOwl.Agent.csproj --configuration Release --no-restore
 
-      - name: Publish (zip)
+      - name: Publish Agent (single-file exe)
+        id: build-output
         run: |
-          dotnet publish agent/SnoopingOwl.Agent.csproj \
-            -c Release -r win-x86 --self-contained false -p:PublishSingleFile=true -o published
+          $env:DOTNET_PUBLISH_SINGLEFILE=true
+          dotnet publish agent/SnoopingOwl.Agent.csproj `
+            -c Release -r win-x86 --self-contained false `
+            -p:PublishSingleFile=true -o published
+          Write-Output "agent-exe-path=published/SnoopingOwl.Agent.exe" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      - name: Verify published executable exists
-        run: |
-          if not exist published\SnoopingOwl.Agent.exe exit 1
+      - name: Upload Agent Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: snoopingowl-agent
+          path: published/
+          retention-days: 7
+
+  build-server:
+    name: Prepare Server
+    runs-on: ubuntu-latest
+    needs: build-agent
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Server Dependencies
+        run: npm ci
+
+      - name: Verify Server Starts
+        run: node server.js &
+
+  create-release:
+    name: Create Draft Release
+    runs-on: windows-latest
+    needs: build-agent
+
+    steps:
+      - name: Cancel previous workflow runs
+        uses: cancel-workflow/run-action@0.3.3
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Agent Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: snoopingowl-agent
+          path: published/
+
+      - name: Create Draft Release
+        id: create-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0-${{ github.run_number }}
+          name: "SnoopingOwl v1.0.0 (${{ github.run_number }})"
+          body: |
+            ## What's new?
+
+            ### Agent
+            - Windows Service with WSS connectivity
+            - Exponential reconnect backoff
+            - Configurable backend URL (registry/env var)
+
+            ### Server
+            - Fastify WSS gateway on :8432
+            - Cloudflare Tunnel compatible
+
+            ## How to test
+            1. Run the backend: `node server.js`
+            2. Run the agent: `published\SnoopingOwl.Agent.exe /runasconsole`
+            3. View connection events in both consoles
+
+          draft: true
+          files: |
+            published\SnoopingOwl.Agent.exe
+          token: ${{ secrets.GITHUB_TOKEN }}

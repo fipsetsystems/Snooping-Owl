@@ -12,6 +12,7 @@ public class AgentService : ServiceBase
     private readonly ManualResetEvent _runCompleteEvent = new(false);
     private WebSocket? _ws;
     private readonly CancellationTokenSource _cts = new();
+    private readonly string _wsUrl;
     private bool _isConnected = false;
     private DateTime _lastHeartbeat = DateTime.UtcNow;
     private const int HeartbeatIntervalMs = 30000;
@@ -20,14 +21,14 @@ public class AgentService : ServiceBase
 
     public AgentService()
     {
-        // Name for Services MMC snap-in
         ServiceName = "SnoopingOwlAgent";
+        // Read URL at service construction time (same logic as Program.cs)
+        _wsUrl = Program.WsUrl;
     }
 
     protected override void OnStart(string[] args)
     {
-        // Log start event (simple console output; in production use Event Log)
-        Console.WriteLine($"{DateTime.UtcNow:O} Agent service starting...");
+        Console.WriteLine($"{DateTime.UtcNow:O} Agent service starting... URL={_wsUrl}");
 
         // Start the connection loop on a thread pool thread
         _ = Task.Run(() => ConnectionLoop(_cts.Token));
@@ -66,7 +67,6 @@ public class AgentService : ServiceBase
             {
                 Console.WriteLine($"{DateTime.UtcNow:O} Reconnecting in {ReconnectBaseDelayMs}ms...");
                 await Task.Delay(ReconnectBaseDelayMs, token);
-                // Increase delay for next time, capped at MaxReconnectDelayMs
                 ReconnectBaseDelayMs = Math.Min(MaxReconnectDelayMs, ReconnectBaseDelayMs * 2);
             }
         }
@@ -74,27 +74,30 @@ public class AgentService : ServiceBase
 
     private async Task ConnectAndRunAsync(CancellationToken token)
     {
-        var uri = "wss://localhost:8432/ws"; // TODO: configure from appsettings
-        _ws = new ClientWebSocket();
+        Console.WriteLine($"{DateTime.UtcNow:O} Connecting to {_wsUrl}...");
 
-        Console.WriteLine($"{DateTime.UtcNow:O} Connecting to {uri}...");
+        _ws = new ClientWebSocket();
 
         try
         {
-            await _ws.ConnectAsync(new Uri(uri), token);
+            await _ws.ConnectAsync(new Uri(_wsUrl), token);
             _isConnected = true;
             ReconnectBaseDelayMs = 1000; // reset backoff on successful connect
             Console.WriteLine($"{DateTime.UtcNow:O} Connected!");
 
             // Send initial identity/event
-            await SendAsync("{\"type\":\"agent-connect\",\"machineId\":\"placeholder\"}");
+            await SendAsync("{\"type\":\"agent-connect\",\"machineId\":\"placeholder-pc-01\"}");
 
             // Heartbeat + event loop
             await HeartbeatLoop(token);
         }
-        catch (WebSocketException wsEx) when (wsEx.WebSocketError == System.Net.WebSockets.WebSocketError.SocketError)
+        catch (OperationCanceledException)
         {
-            Console.WriteLine($"{DateTime.UtcNow:O} WebSocket error: {wsEx.Message}");
+            throw; // service stopping
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{DateTime.UtcNow:O} Failed to connect: {ex.Message}");
             throw;
         }
     }
@@ -105,7 +108,6 @@ public class AgentService : ServiceBase
 
         while (!token.IsCancellationRequested)
         {
-            // Check if we need to send heartbeat
             var now = DateTime.UtcNow;
             var elapsed = (now - _lastHeartbeat).TotalMilliseconds;
 
@@ -123,13 +125,12 @@ public class AgentService : ServiceBase
                 }
                 catch
                 {
-                    // Connection lost, will be detected in ConnectionLoop
+                    // Connection lost - will be handled in ConnectionLoop reconnect logic
                     throw;
                 }
             }
             else
             {
-                // Small sleep to avoid busy-wait
                 await Task.Delay(1000, token);
             }
         }
@@ -145,10 +146,9 @@ public class AgentService : ServiceBase
             new ArraySegment<byte>(buffer),
             WebSocketMessageType.Text,
             true,
-            token);
+            CancellationToken.None);
     }
 
-    // For testing/console mode: manually trigger a state change
     public void ReportOnline() => Console.WriteLine($"[{DateTime.UtcNow:O}] Agent online");
     public void ReportOffline() => Console.WriteLine($"[{DateTime.UtcNow:O}] Agent offline");
 }
