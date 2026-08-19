@@ -32,16 +32,23 @@ jobs:
           pip install "git+https://github.com/miurahr/aqtinstall.git@f383b3c7d9658e881bd8ce8810057393bd934ee1"
           aqt install-qt windows desktop 6.11.2 win64_msvc2022_64 -m qtwebsockets -O C:\Qt
 
+      - name: Set up MSVC toolchain
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Configure agent
         shell: pwsh
         run: |
-          cmake -S agent -B build -G "Visual Studio 17 2022" -A x64 `
+          # Ninja + MSVC env instead of the VS generator: windows-latest
+          # images rotate VS versions, which breaks the generator name.
+          cmake -S agent -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
             -DCMAKE_PREFIX_PATH="C:\Qt\6.11.2\msvc2022_64"
 
       - name: Build agent (win64 Release)
         shell: pwsh
         run: |
-          cmake --build build --config Release
+          cmake --build build
 
       - name: Stage release artifact
         shell: pwsh
