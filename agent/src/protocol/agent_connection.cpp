@@ -5,6 +5,7 @@
 
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRandomGenerator>
 #include <QSysInfo>
 
 #ifndef AGENT_VERSION
@@ -172,10 +173,15 @@ int AgentConnection::backoffMs() const
     for (int i = 1; i < m_attempts; ++i) {
         backoff *= 2;
         if (backoff >= kBackoffMaxMs) {
-            return kBackoffMaxMs;
+            backoff = kBackoffMaxMs;
+            break;
         }
     }
-    return backoff;
+    // Jitter (±20%) desynchronizes many agents reconnecting at once
+    // (e.g. after a server restart), avoiding reconnect storms.
+    const int spread = backoff / 5;
+    return backoff - spread
+        + QRandomGenerator::global()->bounded(spread * 2 + 1);
 }
 
 void AgentConnection::setState(ConnectionState state)

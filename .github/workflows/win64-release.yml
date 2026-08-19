@@ -29,20 +29,32 @@ jobs:
         with:
           arch: x64
 
-      - name: Cache static Qt
+      - name: Cache static Qt + OpenSSL
         id: qt-cache
         uses: actions/cache@v4
         with:
-          path: C:\QtStatic
-          key: qt-static-6.11.2-v1
+          path: |
+            C:\QtStatic
+            C:\vcpkg\installed
+          key: qt-static-6.11.2-openssl-v1
+
+      - name: Install vcpkg + static OpenSSL
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          # Static OpenSSL is required so the single-exe agent can speak
+          # wss:// (TLS). Built once via vcpkg, cached thereafter.
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git C:\vcpkg
+          C:\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+          C:\vcpkg\vcpkg.exe install openssl:x64-windows-static --disable-metrics
 
       - name: Build static Qt (qtbase + qtwebsockets)
         if: steps.qt-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           # Qt ships no Windows static kits; build the subset the agent
-          # needs (Core/Network/WebSockets) statically so the release is a
-          # single agent.exe with no DLLs or plugins.
+          # needs (Core/Network/WebSockets + OpenSSL) statically so the
+          # release is a single agent.exe with no DLLs or plugins.
           $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force C:\Qt-src | Out-Null
           foreach ($m in @("qtbase", "qtwebsockets")) {
@@ -56,7 +68,9 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=C:\QtStatic `
             -DBUILD_SHARED_LIBS=OFF `
             -DFEATURE_gui=OFF -DFEATURE_opengl=OFF -DFEATURE_dbus=OFF `
-            -DFEATURE_openssl=OFF -DFEATURE_testlib=OFF `
+            -DFEATURE_openssl=ON -DFEATURE_openssl_linked=ON `
+            -DOPENSSL_ROOT_DIR=C:\vcpkg\installed\x64-windows-static `
+            -DFEATURE_testlib=OFF `
             -DQT_BUILD_EXAMPLES=OFF -DQT_BUILD_TESTS=OFF
           cmake --build C:\Qt-src\qtbase-build --target install
 
