@@ -15,6 +15,9 @@ constexpr int kCurrentSchemaVersion = 1;
 const char* kSchemaVersionKey = "schemaVersion";
 const char* kLoggingKey = "logging";
 const char* kLoggingLevelKey = "level";
+const char* kConnectionKey = "connection";
+const char* kConnectionUrlKey = "url";
+const char* kConnectionTokenKey = "token";
 
 QJsonObject defaultsObject()
 {
@@ -22,9 +25,16 @@ QJsonObject defaultsObject()
     logging.insert(QLatin1String(kLoggingLevelKey),
                    QLatin1String("info"));
 
+    QJsonObject connection;
+    connection.insert(QLatin1String(kConnectionUrlKey),
+                      QLatin1String("ws://127.0.0.1:8080/ws/agent"));
+    connection.insert(QLatin1String(kConnectionTokenKey),
+                      QLatin1String("dev-token"));
+
     QJsonObject root;
     root.insert(QLatin1String(kSchemaVersionKey), kCurrentSchemaVersion);
     root.insert(QLatin1String(kLoggingKey), logging);
+    root.insert(QLatin1String(kConnectionKey), connection);
     return root;
 }
 
@@ -77,6 +87,14 @@ bool Configuration::load(const QString& filePath)
         logging.value(QLatin1String(kLoggingLevelKey)).toString(
             QLatin1String("info"));
 
+    const QJsonObject connection =
+        root.value(QLatin1String(kConnectionKey)).toObject();
+    m_connection.url = connection.value(QLatin1String(kConnectionUrlKey))
+                           .toString(QStringLiteral("ws://127.0.0.1:8080/ws/agent"));
+    m_connection.token =
+        connection.value(QLatin1String(kConnectionTokenKey))
+            .toString(QStringLiteral("dev-token"));
+
     return true;
 }
 
@@ -88,6 +106,11 @@ QString Configuration::filePath() const
 LoggingSettings Configuration::logging() const
 {
     return m_logging;
+}
+
+ConnectionSettings Configuration::connection() const
+{
+    return m_connection;
 }
 
 QString defaultConfigFilePath()

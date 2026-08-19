@@ -2,6 +2,7 @@
 
 #include "bootstrap.h"
 #include "diagnostics/file_logger.h"
+#include "protocol/agent_connection.h"
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -83,8 +84,12 @@ void WINAPI serviceMain(DWORD /*argc*/, LPWSTR* /*argv*/)
     reportStatus(SERVICE_RUNNING);
     qInfo("SnoopingOwl agent service running");
 
+    protocol::AgentConnection* connection =
+        protocol::startAgentConnection(&app);
+
     app.exec();
 
+    connection->stop();
     qInfo("SnoopingOwl agent service stopped");
     g_application.store(nullptr);
     diagnostics::shutdownLogging();

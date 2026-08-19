@@ -1,5 +1,6 @@
 #include "bootstrap.h"
 #include "diagnostics/file_logger.h"
+#include "protocol/agent_connection.h"
 
 #include <QCommandLineParser>
 #include <QCoreApplication>
@@ -73,7 +74,11 @@ int main(int argc, char* argv[])
 
     qInfo("SnoopingOwl agent started (foreground, version %s)", AGENT_VERSION);
 
-    QObject::connect(&app, &QCoreApplication::aboutToQuit, [] {
+    protocol::AgentConnection* connection =
+        protocol::startAgentConnection(&app);
+
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, [connection] {
+        connection->stop();
         qInfo("SnoopingOwl agent stopped");
         diagnostics::shutdownLogging();
     });

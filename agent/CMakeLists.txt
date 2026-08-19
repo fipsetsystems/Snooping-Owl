@@ -22,6 +22,8 @@ set(AGENT_SOURCES
     src/bootstrap.cpp
     src/configuration/configuration.cpp
     src/diagnostics/file_logger.cpp
+    src/identity/device_id.cpp
+    src/protocol/agent_connection.cpp
 )
 
 if(WIN32)

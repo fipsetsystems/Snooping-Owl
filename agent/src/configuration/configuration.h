@@ -10,6 +10,13 @@ struct LoggingSettings
     QString level = QStringLiteral("info"); // debug | info | warn | critical
 };
 
+// Server connection configuration, per schema version 1.
+struct ConnectionSettings
+{
+    QString url = QStringLiteral("ws://127.0.0.1:8080/ws/agent");
+    QString token = QStringLiteral("dev-token");
+};
+
 // The agent's configuration boundary.
 //
 // Holds a versioned JSON document at a well-known machine-wide path so the
@@ -17,8 +24,8 @@ struct LoggingSettings
 //   Windows: %ProgramData%\SnoopingOwl\config.json
 //   Linux:   ~/.config/SnoopingOwl/config.json (dev subset)
 //
-// Only fields with an established purpose exist today (logging). Identity,
-// server address, and enrollment state are added in the protocol phase.
+// Only fields with an established purpose exist today (logging, server
+// connection). Identity and enrollment state are added in later phases.
 class Configuration
 {
 public:
@@ -35,11 +42,15 @@ public:
     // Logging section, with defaults when absent.
     LoggingSettings logging() const;
 
+    // Server connection section, with defaults when absent.
+    ConnectionSettings connection() const;
+
 private:
     Configuration() = default;
 
     QString m_filePath;
     LoggingSettings m_logging;
+    ConnectionSettings m_connection;
     int m_schemaVersion = 0;
 };
 
