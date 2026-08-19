@@ -1,6 +1,14 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.19)
 
-project(SnoopingOwlAgent VERSION 0.1.0 LANGUAGES CXX)
+# Version comes from version.json - the single source of truth.
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.json" VERSION_JSON)
+string(JSON PROJECT_VERSION GET "${VERSION_JSON}" version)
+string(REPLACE "." ";" VERSION_PARTS "${PROJECT_VERSION}")
+list(GET VERSION_PARTS 0 VER_MAJOR)
+list(GET VERSION_PARTS 1 VER_MINOR)
+list(GET VERSION_PARTS 2 VER_PATCH)
+
+project(SnoopingOwlAgent VERSION ${PROJECT_VERSION} LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -20,7 +28,9 @@ if(WIN32)
     list(APPEND AGENT_SOURCES
         src/service/service_core.cpp
         src/service/service_manager.cpp
+        src/version.rc
     )
+    configure_file(src/version.rc.in ${CMAKE_CURRENT_BINARY_DIR}/src/version.rc @ONLY)
 endif()
 
 add_executable(agent ${AGENT_SOURCES})

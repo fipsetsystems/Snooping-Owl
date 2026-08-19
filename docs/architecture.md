@@ -48,6 +48,9 @@ protocol, dashboard, server, database schema.
 | Config | Versioned JSON, `%ProgramData%\SnoopingOwl\config.json` | Simple, diffable, machine-wide |
 | Installer | WiX v5 (MSI + Burn bootstrapper) | Enterprise: transactional service install, repair, silent deploy |
 | Deployment | Native Windows build | Windows 10/11 test machines available |
+| Install location | `%ProgramFiles%\SnoopingOwl` (fixed; Options UI suppressed) | Standard for managed enterprise agents |
+| Versioning | Single source of truth: `agent/version.json` | CMake + Windows file version info + CI artifact naming |
+| CI | GitHub Actions, `windows-latest`, x64 MSVC Release | Produces win64 `agent.exe` only; GitHub Release on `v*` tags |
 
 ## Reserved Boundaries
 

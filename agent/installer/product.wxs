@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SnoopingOwl Agent MSI package (WiX v5).
+
+  Installs:
+    %ProgramFiles%\SnoopingOwl\agent.exe
+    %ProgramData%\SnoopingOwl\config.json   (never overwritten on upgrade)
+
+  Registers and starts the SnoopingOwl Windows service (LocalSystem,
+  auto start, failure recovery). Uninstall stops and removes the service.
+
+  Build (Windows, from this directory after copying agent.exe and
+  config.json here, or see build.cmd):
+    wix build -arch x64 product.wxs -o SnoopingOwl.msi
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Package Name="SnoopingOwl Agent"
+           Manufacturer="SnoopingOwl"
+           Version="0.1.0"
+           UpgradeCode="B51F604C-1480-4661-A9F1-F83474EF026B"
+           Language="1033">
+
+    <SummaryInformation Description="SnoopingOwl workstation operations agent" />
+
+    <!-- Upgrades replace earlier versions; service is stopped/restarted
+         by the ServiceControl below. -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of SnoopingOwl is already installed." />
+
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <StandardDirectory Id="ProgramFilesFolder">
+      <Directory Id="INSTALLFOLDER" Name="SnoopingOwl">
+        <Component Id="AgentExecutable" Guid="290E6A9C-96AC-4D6F-8C70-9E2CD2D14AB0">
+          <File Id="AgentExe" Source="agent.exe" KeyPath="yes" />
+          <ServiceInstall Id="SnoopingOwlServiceInstall"
+                          Name="SnoopingOwl"
+                          DisplayName="SnoopingOwl Agent"
+                          Description="SnoopingOwl workstation operations agent."
+                          Start="auto"
+                          Type="ownProcess"
+                          ErrorControl="normal"
+                          Account="LocalSystem"
+                          Interactive="no"
+                          Vital="yes">
+            <!-- Restart on failure, like a normal managed service:
+                 up to three restarts, 5 s apart, failure count reset
+                 after one day without failures. -->
+            <util:ServiceConfig FirstFailureActionType="restart"
+                                SecondFailureActionType="restart"
+                                ThirdFailureActionType="restart"
+                                RestartServiceDelayInSeconds="5"
+                                ResetPeriodInDays="1" />
+          </ServiceInstall>
+          <ServiceControl Id="SnoopingOwlServiceControl"
+                          Name="SnoopingOwl"
+                          Start="install"
+                          Stop="both"
+                          Remove="uninstall"
+                          Wait="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="SnoopingOwlDataFolder" Name="SnoopingOwl">
+        <Component Id="AgentConfig" Guid="71DDD9CF-EB00-4DCC-834D-2A0A1E5493E9"
+                   NeverOverwrite="yes">
+          <!-- NeverOverwrite: keep an existing config.json across upgrades. -->
+          <File Id="AgentConfigFile" Source="config.json" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="MainFeature" Title="SnoopingOwl Agent" Level="1">
+      <ComponentRef Id="AgentExecutable" />
+      <ComponentRef Id="AgentConfig" />
+    </Feature>
+
+    <!-- Interactive flow when the MSI is run directly (Burn suppresses it). -->
+    <UI>
+      <UIRef Id="WixUI_InstallDir" />
+      <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    </UI>
+  </Package>
+</Wix>

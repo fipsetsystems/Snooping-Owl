@@ -1,0 +1,29 @@
+#include <windows.h>
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION @VER_MAJOR@,@VER_MINOR@,@VER_PATCH@,0
+ PRODUCTVERSION @VER_MAJOR@,@VER_MINOR@,@VER_PATCH@,0
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0x0L
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE 0x0L
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904b0"
+    BEGIN
+      VALUE "CompanyName", "SnoopingOwl"
+      VALUE "FileDescription", "SnoopingOwl workstation operations agent"
+      VALUE "FileVersion", "@VERSION@"
+      VALUE "InternalName", "agent"
+      VALUE "OriginalFilename", "agent.exe"
+      VALUE "ProductName", "SnoopingOwl"
+      VALUE "ProductVersion", "@VERSION@"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END

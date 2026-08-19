@@ -12,6 +12,12 @@ CMakeLists.txt.user
 # Logs produced during dev runs
 *.log
 
+# Installer build artifacts (WiX cache, outputs, test payload)
+agent/installer/.wix/
+agent/installer/SnoopingOwl.msi
+agent/installer/SnoopingOwlSetup.exe
+agent/installer/agent.exe
+
 # OS
 .DS_Store
 Thumbs.db
