@@ -53,7 +53,7 @@ jobs:
       - name: Stage release artifact
         shell: pwsh
         run: |
-          Copy-Item build\Release\agent.exe `
+          Copy-Item build\agent.exe `
             "$env:RUNNER_TEMP\${{ steps.version.outputs.artifact }}"
 
       - name: Upload artifact
