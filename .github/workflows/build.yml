@@ -40,28 +40,10 @@ jobs:
           path: published/
           retention-days: 7
 
-  build-server:
-    name: Prepare Server
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Server Dependencies
-        run: npm ci
-
-      - name: Verify Server Starts
-        run: node server.js &
-
   create-release:
     name: Create Draft Release
     runs-on: windows-latest
+    needs: build-agent
 
     steps:
       - name: Checkout repository
