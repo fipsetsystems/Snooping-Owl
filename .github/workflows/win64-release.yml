@@ -44,7 +44,7 @@ jobs:
           # needs (Core/Network/WebSockets) statically so the release is a
           # single agent.exe with no DLLs or plugins.
           pip install "git+https://github.com/miurahr/aqtinstall.git@f383b3c7d9658e881bd8ce8810057393bd934ee1"
-          aqt install-src windows desktop 6.11.2 qtbase qtwebsockets -O C:\Qt-src
+          aqt install-src windows desktop 6.11.2 -m qtbase qtwebsockets -O C:\Qt-src
 
           cmake -S C:\Qt-src\qtbase -B C:\Qt-src\qtbase-build -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
