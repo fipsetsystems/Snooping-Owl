@@ -13,9 +13,6 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Cancel previous workflow runs
-        uses: styfle/cancel-workflow@1
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -35,7 +32,6 @@ jobs:
           dotnet publish agent/SnoopingOwl.Agent.csproj `
             -c Release -r win-x86 --self-contained false `
             -p:PublishSingleFile=true -o published
-          echo "agent-exe-path=published/SnoopingOwl.Agent.exe" >> $env:GITHUB_OUTPUT
 
       - name: Upload Agent Artifact
         uses: actions/upload-artifact@v4
@@ -68,9 +64,6 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Cancel previous workflow runs
-        uses: styfle/cancel-workflow@1
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
