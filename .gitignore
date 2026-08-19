@@ -1,0 +1,17 @@
+# Build output
+build/
+cmake-build-*/
+
+# Qt Creator / IDE
+*.user
+*.user.*
+CMakeLists.txt.user
+.cache/
+.vscode/
+
+# Logs produced during dev runs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
