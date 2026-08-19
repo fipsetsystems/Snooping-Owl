@@ -40,10 +40,10 @@ and CI uses it to name artifacts and GitHub Releases.
 (MSVC, x64 — no ARM, no Linux) on GitHub Actions:
 
 - **Manual run**: Actions → "win64-release" → Run workflow → download
-  `SnoopingOwl-Agent-<version>-win64.zip` (agent.exe + Qt runtime, extract
-  and run anywhere)
+  `SnoopingOwl-Agent-<version>-win64.exe` — a **single static binary**
+  (Qt built in, no DLLs/plugins to ship)
 - **Tag push** (`git tag v0.1.0 && git push origin v0.1.0`): builds and
-  **publishes a GitHub Release** automatically with the zip attached
+  **publishes a GitHub Release** automatically with the exe attached
 
 No MSI is produced by CI; the WiX sources in `agent/installer/` remain
 available for enterprise packaging if needed.

@@ -22,62 +22,74 @@ jobs:
         run: |
           $v = (Get-Content agent/version.json | ConvertFrom-Json).version
           Write-Output "version=$v" >> $env:GITHUB_OUTPUT
-          Write-Output "package=SnoopingOwl-Agent-$v-win64" >> $env:GITHUB_OUTPUT
-          Write-Output "zip=SnoopingOwl-Agent-$v-win64.zip" >> $env:GITHUB_OUTPUT
-
-      - name: Install Qt for Windows
-        shell: pwsh
-        run: |
-          # aqtinstall 3.3.0 (PyPI) predates Qt's new mirror layout for 6.11+;
-          # pin the fix from PR #1000 until it ships in a release.
-          pip install "git+https://github.com/miurahr/aqtinstall.git@f383b3c7d9658e881bd8ce8810057393bd934ee1"
-          aqt install-qt windows desktop 6.11.2 win64_msvc2022_64 -m qtwebsockets -O C:\Qt
+          Write-Output "artifact=SnoopingOwl-Agent-$v-win64.exe" >> $env:GITHUB_OUTPUT
 
       - name: Set up MSVC toolchain
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
 
-      - name: Configure agent
+      - name: Cache static Qt
+        id: qt-cache
+        uses: actions/cache@v4
+        with:
+          path: C:\QtStatic
+          key: qt-static-6.11.2-v1
+
+      - name: Build static Qt (qtbase + qtwebsockets)
+        if: steps.qt-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
-          # Ninja + MSVC env instead of the VS generator: windows-latest
-          # images rotate VS versions, which breaks the generator name.
-          cmake -S agent -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_PREFIX_PATH="C:\Qt\6.11.2\msvc2022_64"
+          # Qt ships no Windows static kits; build the subset the agent
+          # needs (Core/Network/WebSockets) statically so the release is a
+          # single agent.exe with no DLLs or plugins.
+          pip install "git+https://github.com/miurahr/aqtinstall.git@f383b3c7d9658e881bd8ce8810057393bd934ee1"
+          aqt install-src windows desktop 6.11.2 qtbase qtwebsockets -O C:\Qt-src
 
-      - name: Build agent (win64 Release)
+          cmake -S C:\Qt-src\qtbase -B C:\Qt-src\qtbase-build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_INSTALL_PREFIX=C:\QtStatic `
+            -DBUILD_SHARED_LIBS=OFF `
+            -DFEATURE_gui=OFF -DFEATURE_opengl=OFF -DFEATURE_dbus=OFF `
+            -DFEATURE_openssl=OFF -DFEATURE_testlib=OFF `
+            -DQT_BUILD_EXAMPLES=OFF -DQT_BUILD_TESTS=OFF
+          cmake --build C:\Qt-src\qtbase-build --target install
+
+          cmake -S C:\Qt-src\qtwebsockets -B C:\Qt-src\qtwebsockets-build `
+            -G Ninja -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_INSTALL_PREFIX=C:\QtStatic `
+            -DCMAKE_PREFIX_PATH=C:\QtStatic `
+            -DBUILD_SHARED_LIBS=OFF `
+            -DQT_BUILD_EXAMPLES=OFF -DQT_BUILD_TESTS=OFF
+          cmake --build C:\Qt-src\qtwebsockets-build --target install
+
+      - name: Configure agent (static)
+        shell: pwsh
+        run: |
+          cmake -S agent -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_PREFIX_PATH="C:\QtStatic"
+
+      - name: Build agent (win64 Release, static)
         shell: pwsh
         run: |
           cmake --build build
 
-      - name: Package agent (exe + Qt runtime)
+      - name: Stage release artifact
         shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
-          New-Item -ItemType Directory -Force package | Out-Null
-          Copy-Item build\agent.exe package\
-          # windeployqt collects the Qt DLLs and plugins the exe needs
-          # (Core/Network/WebSockets, tls + networkinformation plugins,
-          # OpenSSL DLLs for wss://) next to the binary.
-          & "C:\Qt\6.11.2\msvc2022_64\bin\windeployqt.exe" `
-            --release --no-translations --dir package package\agent.exe
-          if (-not (Test-Path package\Qt6WebSockets.dll)) {
-            Write-Error "windeployqt did not produce Qt6WebSockets.dll"
-          }
-          Compress-Archive -Path package\* `
-            -DestinationPath "$env:RUNNER_TEMP\${{ steps.version.outputs.zip }}"
+          Copy-Item build\agent.exe `
+            "$env:RUNNER_TEMP\${{ steps.version.outputs.artifact }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.version.outputs.zip }}
-          path: ${{ runner.temp }}/${{ steps.version.outputs.zip }}
+          name: ${{ steps.version.outputs.artifact }}
+          path: ${{ runner.temp }}/${{ steps.version.outputs.artifact }}
 
       - name: Publish GitHub Release (tags only)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           name: SnoopingOwl Agent ${{ steps.version.outputs.version }}
-          files: ${{ runner.temp }}/${{ steps.version.outputs.zip }}
+          files: ${{ runner.temp }}/${{ steps.version.outputs.artifact }}
           fail_on_unmatched_files: true
