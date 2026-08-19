@@ -68,5 +68,4 @@ jobs:
         with:
           name: SnoopingOwl Agent ${{ steps.version.outputs.version }}
           files: ${{ runner.temp }}/${{ steps.version.outputs.artifact }}
-          draft: true
           fail_on_unmatched_files: true
