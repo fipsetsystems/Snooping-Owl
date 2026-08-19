@@ -11,12 +11,10 @@ jobs:
   build-agent:
     name: Build .NET Agent
     runs-on: windows-latest
-    outputs:
-      agent-exe-path: ${{ steps.build-output.outputs.agent-exe-path }}
 
     steps:
       - name: Cancel previous workflow runs
-        uses: cancel-workflow/run-action@0.3.3
+        uses: styfle/cancel-workflow@1
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,13 +31,11 @@ jobs:
         run: dotnet build agent/SnoopingOwl.Agent.csproj --configuration Release --no-restore
 
       - name: Publish Agent (single-file exe)
-        id: build-output
         run: |
-          $env:DOTNET_PUBLISH_SINGLEFILE=true
           dotnet publish agent/SnoopingOwl.Agent.csproj `
             -c Release -r win-x86 --self-contained false `
             -p:PublishSingleFile=true -o published
-          Write-Output "agent-exe-path=published/SnoopingOwl.Agent.exe" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          echo "agent-exe-path=published/SnoopingOwl.Agent.exe" >> $env:GITHUB_OUTPUT
 
       - name: Upload Agent Artifact
         uses: actions/upload-artifact@v4
@@ -51,7 +47,6 @@ jobs:
   build-server:
     name: Prepare Server
     runs-on: ubuntu-latest
-    needs: build-agent
 
     steps:
       - name: Checkout repository
@@ -71,11 +66,10 @@ jobs:
   create-release:
     name: Create Draft Release
     runs-on: windows-latest
-    needs: build-agent
 
     steps:
       - name: Cancel previous workflow runs
-        uses: cancel-workflow/run-action@0.3.3
+        uses: styfle/cancel-workflow@1
 
       - name: Checkout repository
         uses: actions/checkout@v4
