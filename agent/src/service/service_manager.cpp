@@ -4,6 +4,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include <winsvc.h>
+#include <sddl.h>
 
 #include <QCoreApplication>
 #include <QDebug>
