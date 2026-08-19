@@ -1,0 +1,39 @@
+name: Build and Test SnoopingOwl Agent
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build .NET 8 Agent
+    runs-on: windows-latest
+
+    steps:
+      - name: Cancel previous workflow runs
+        uses: cancel-workflow/run-action@0.3.3
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+
+      - name: Restore dependencies
+        run: dotnet restore agent/SnoopingOwl.Agent.csproj
+
+      - name: Build
+        run: dotnet build agent/SnoopingOwl.Agent.csproj --configuration Release --no-restore
+
+      - name: Publish (zip)
+        run: |
+          dotnet publish agent/SnoopingOwl.Agent.csproj \
+            -c Release -r win-x86 --self-contained false -p:PublishSingleFile=true -o published
+
+      - name: Verify published executable exists
+        run: |
+          if not exist published\SnoopingOwl.Agent.exe exit 1

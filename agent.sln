@@ -1,0 +1,6 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# SnoopingOwl Agent - Phase 1
+Project("agent/agent.csproj") = "SnoopingOwl.Agent"
+    ProjectSection = postProject
+        Formation = {A36BBA67-8E17-4A6B-APPENDIX}
+    EndProjectSection

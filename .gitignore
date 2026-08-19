@@ -1,0 +1,15 @@
+# .NET specific
+bin/
+obj/
+**/*.user
+**/*.suo
+
+# Visual Studio
+.vs/
+*.sln.iml
+
+# Publish output
+published/
+
+# InnoSetup
+*.iss
