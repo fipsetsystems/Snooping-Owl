@@ -22,7 +22,8 @@ jobs:
         run: |
           $v = (Get-Content agent/version.json | ConvertFrom-Json).version
           Write-Output "version=$v" >> $env:GITHUB_OUTPUT
-          Write-Output "artifact=SnoopingOwl-Agent-$v-win64.exe" >> $env:GITHUB_OUTPUT
+          Write-Output "package=SnoopingOwl-Agent-$v-win64" >> $env:GITHUB_OUTPUT
+          Write-Output "zip=SnoopingOwl-Agent-$v-win64.zip" >> $env:GITHUB_OUTPUT
 
       - name: Install Qt for Windows
         shell: pwsh
@@ -50,22 +51,33 @@ jobs:
         run: |
           cmake --build build
 
-      - name: Stage release artifact
+      - name: Package agent (exe + Qt runtime)
         shell: pwsh
         run: |
-          Copy-Item build\agent.exe `
-            "$env:RUNNER_TEMP\${{ steps.version.outputs.artifact }}"
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force package | Out-Null
+          Copy-Item build\agent.exe package\
+          # windeployqt collects the Qt DLLs and plugins the exe needs
+          # (Core/Network/WebSockets, tls + networkinformation plugins,
+          # OpenSSL DLLs for wss://) next to the binary.
+          & "C:\Qt\6.11.2\msvc2022_64\bin\windeployqt.exe" `
+            --release --no-translations --dir package package\agent.exe
+          if (-not (Test-Path package\Qt6WebSockets.dll)) {
+            Write-Error "windeployqt did not produce Qt6WebSockets.dll"
+          }
+          Compress-Archive -Path package\* `
+            -DestinationPath "$env:RUNNER_TEMP\${{ steps.version.outputs.zip }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.version.outputs.artifact }}
-          path: ${{ runner.temp }}/${{ steps.version.outputs.artifact }}
+          name: ${{ steps.version.outputs.zip }}
+          path: ${{ runner.temp }}/${{ steps.version.outputs.zip }}
 
       - name: Publish GitHub Release (tags only)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           name: SnoopingOwl Agent ${{ steps.version.outputs.version }}
-          files: ${{ runner.temp }}/${{ steps.version.outputs.artifact }}
+          files: ${{ runner.temp }}/${{ steps.version.outputs.zip }}
           fail_on_unmatched_files: true
