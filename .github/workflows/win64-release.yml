@@ -27,7 +27,9 @@ jobs:
       - name: Install Qt for Windows
         shell: pwsh
         run: |
-          pip install aqtinstall
+          # aqtinstall 3.3.0 (PyPI) predates Qt's new mirror layout for 6.11+;
+          # pin the fix from PR #1000 until it ships in a release.
+          pip install "git+https://github.com/miurahr/aqtinstall.git@f383b3c7d9658e881bd8ce8810057393bd934ee1"
           aqt install-qt windows desktop 6.11.2 win64_msvc2022_64 -m qtwebsockets -O C:\Qt
 
       - name: Configure agent
