@@ -1,16 +1,15 @@
-using Microsoft.Win32.SafeHandles;
 using System;
-using System.Net.WebSockets;
-using System.Text;
+using System.ServiceProcess;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Win32;
 
 namespace SnoopingOwl.Agent;
 
 public class Program
 {
     // Priority: env var > registry (HKLM\Software\SnoopingOwl\BackendUrl) > default
-    private static readonly string WsUrl = Environment.GetEnvironmentVariable("SNOOPINGOWL_WS_URL")
+    public static readonly string WsUrl = Environment.GetEnvironmentVariable("SNOOPINGOWL_WS_URL")
         ?.Trim()
         ?? GetBackendFromRegistry()
         ?? "wss://YOUR_CF_TUNNEL_ID.trycloudflare.com/ws";
@@ -42,13 +41,12 @@ public class Program
         }
 
         // Otherwise run as Windows Service
-        var servicesToRun = new[] { new AgentService() };
-        ServiceBase.Run(servicesToRun);
+        ServiceBase.Run(new[] { new AgentService() });
     }
 
     static async Task RunAsConsole()
     {
-        Console.WriteLine($"SnoopingOwl Agent - Console Mode");
+        Console.WriteLine("SnoopingOwl Agent - Console Mode");
         Console.WriteLine($"WSS Endpoint: {WsUrl}");
         Console.WriteLine("Press Ctrl+C to exit");
 
@@ -57,8 +55,5 @@ public class Program
 
         var svc = new AgentService();
         await svc.StartAsync(cts.Token);
-
-        // Keep running until cancellation
-        await Task.Delay(Timeout.Infinite, cts.Token);
     }
 }

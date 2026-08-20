@@ -1,6 +1,6 @@
-using Microsoft.Win32.SafeHandles;
 using System;
 using System.Net.WebSockets;
+using System.ServiceProcess;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,30 +9,25 @@ namespace SnoopingOwl.Agent;
 
 public class AgentService : ServiceBase
 {
-    private readonly ManualResetEvent _runCompleteEvent = new(false);
     private WebSocket? _ws;
     private readonly CancellationTokenSource _cts = new();
     private readonly string _wsUrl;
+    private int _reconnectDelayMs = 1000;
     private bool _isConnected = false;
     private DateTime _lastHeartbeat = DateTime.UtcNow;
     private const int HeartbeatIntervalMs = 30000;
-    private const int ReconnectBaseDelayMs = 1000;
     private const int MaxReconnectDelayMs = 30000;
 
     public AgentService()
     {
         ServiceName = "SnoopingOwlAgent";
-        // Read URL at service construction time (same logic as Program.cs)
         _wsUrl = Program.WsUrl;
     }
 
     protected override void OnStart(string[] args)
     {
         Console.WriteLine($"{DateTime.UtcNow:O} Agent service starting... URL={_wsUrl}");
-
-        // Start the connection loop on a thread pool thread
         _ = Task.Run(() => ConnectionLoop(_cts.Token));
-
         base.OnStart(args);
     }
 
@@ -40,8 +35,12 @@ public class AgentService : ServiceBase
     {
         Console.WriteLine($"{DateTime.UtcNow:O} Agent service stopping...");
         _cts.Cancel();
-        _runCompleteEvent.WaitOne();
         base.OnStop();
+    }
+
+    public async Task StartAsync(CancellationToken token)
+    {
+        await ConnectionLoop(token);
     }
 
     private async Task ConnectionLoop(CancellationToken token)
@@ -54,7 +53,6 @@ public class AgentService : ServiceBase
             }
             catch (OperationCanceledException)
             {
-                // Service is stopping, exit
                 break;
             }
             catch (Exception ex)
@@ -62,12 +60,11 @@ public class AgentService : ServiceBase
                 Console.WriteLine($"{DateTime.UtcNow:O} Connection error: {ex.Message}");
             }
 
-            // Reconnect with backoff unless stopping
             if (!token.IsCancellationRequested)
             {
-                Console.WriteLine($"{DateTime.UtcNow:O} Reconnecting in {ReconnectBaseDelayMs}ms...");
-                await Task.Delay(ReconnectBaseDelayMs, token);
-                ReconnectBaseDelayMs = Math.Min(MaxReconnectDelayMs, ReconnectBaseDelayMs * 2);
+                Console.WriteLine($"{DateTime.UtcNow:O} Reconnecting in {_reconnectDelayMs}ms...");
+                await Task.Delay(_reconnectDelayMs, token);
+                _reconnectDelayMs = Math.Min(MaxReconnectDelayMs, _reconnectDelayMs * 2);
             }
         }
     }
@@ -82,18 +79,15 @@ public class AgentService : ServiceBase
         {
             await _ws.ConnectAsync(new Uri(_wsUrl), token);
             _isConnected = true;
-            ReconnectBaseDelayMs = 1000; // reset backoff on successful connect
+            _reconnectDelayMs = 1000;
             Console.WriteLine($"{DateTime.UtcNow:O} Connected!");
 
-            // Send initial identity/event
             await SendAsync("{\"type\":\"agent-connect\",\"machineId\":\"placeholder-pc-01\"}");
-
-            // Heartbeat + event loop
             await HeartbeatLoop(token);
         }
         catch (OperationCanceledException)
         {
-            throw; // service stopping
+            throw;
         }
         catch (Exception ex)
         {
@@ -125,7 +119,6 @@ public class AgentService : ServiceBase
                 }
                 catch
                 {
-                    // Connection lost - will be handled in ConnectionLoop reconnect logic
                     throw;
                 }
             }
