@@ -75,4 +75,4 @@ jobs:
             3. View connection events in both consoles
 
           draft: false
-          files: published\SnoopingOwl.Agent.exe
+          files: published/SnoopingOwl.Agent.exe
