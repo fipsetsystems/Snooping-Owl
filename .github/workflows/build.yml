@@ -26,14 +26,14 @@ jobs:
           dotnet-version: 8.x
 
       - name: Restore dependencies
-        run: dotnet restore agent/SnoopingOwl.Agent.csproj
+        run: dotnet restore agent/agent.csproj
 
       - name: Build Agent
-        run: dotnet build agent/SnoopingOwl.Agent.csproj --configuration Release --no-restore
+        run: dotnet build agent/agent.csproj --configuration Release --no-restore
 
       - name: Publish Agent (single-file exe)
         run: |
-          dotnet publish agent/SnoopingOwl.Agent.csproj `
+          dotnet publish agent/agent.csproj `
             -c Release -r win-x86 --self-contained false `
             -p:PublishSingleFile=true -o published
 
