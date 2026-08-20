@@ -1,4 +1,4 @@
-name: Build and Release SnoopingOwl
+name: Auto Release SnoopingOwl
 
 on:
   push:
@@ -8,52 +8,13 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  build-agent:
-    name: Build .NET Agent
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup .NET 8 SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.x
-
-      - name: Restore dependencies
-        run: dotnet restore agent/SnoopingOwl.Agent.csproj
-
-      - name: Build Agent
-        run: dotnet build agent/SnoopingOwl.Agent.csproj --configuration Release --no-restore
-
-      - name: Publish Agent (single-file exe)
-        run: |
-          dotnet publish agent/SnoopingOwl.Agent.csproj `
-            -c Release -r win-x86 --self-contained false `
-            -p:PublishSingleFile=true -o published
-
-      - name: Upload Agent Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: snoopingowl-agent
-          path: published/
-          retention-days: 7
-
   create-release:
-    name: Create Draft Release
+    name: Create Auto Release
     runs-on: windows-latest
-    needs: build-agent
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Download Agent Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: snoopingowl-agent
-          path: published/
 
       - name: Create Draft Release
         id: create-release
@@ -62,23 +23,14 @@ jobs:
           tag_name: v1.0.0-${{ github.run_number }}
           name: "SnoopingOwl v1.0.0 (${{ github.run_number }})"
           body: |
-            ## What's new?
+            ## SnoopingOwl v1.0.0
 
-            ### Agent
-            - Windows Service with WSS connectivity
-            - Exponential reconnect backoff
-            - Configurable backend URL (registry/env var)
+            ### Auto-generated release on push to main
 
-            ### Server
-            - Fastify WSS gateway on :8432
-            - Cloudflare Tunnel compatible
-
-            ## How to test
+            ### How to test
             1. Run the backend: `node server.js`
             2. Run the agent: `published\SnoopingOwl.Agent.exe /runasconsole`
             3. View connection events in both consoles
 
-          draft: true
-          files: |
-            published\SnoopingOwl.Agent.exe
+          draft: false
           token: ${{ secrets.GITHUB_TOKEN }}
