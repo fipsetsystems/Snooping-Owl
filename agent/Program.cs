@@ -14,7 +14,7 @@ public class Program
         ?? GetBackendFromRegistry()
         ?? "wss://YOUR_CF_TUNNEL_ID.trycloudflare.com/ws";
 
-    private static string GetBackendFromRegistry()
+    private static string? GetBackendFromRegistry()
     {
         try
         {

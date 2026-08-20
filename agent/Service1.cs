@@ -9,11 +9,10 @@ namespace SnoopingOwl.Agent;
 
 public class AgentService : ServiceBase
 {
-    private WebSocket? _ws;
+    private ClientWebSocket? _ws;
     private readonly CancellationTokenSource _cts = new();
     private readonly string _wsUrl;
     private int _reconnectDelayMs = 1000;
-    private bool _isConnected = false;
     private DateTime _lastHeartbeat = DateTime.UtcNow;
     private const int HeartbeatIntervalMs = 30000;
     private const int MaxReconnectDelayMs = 30000;
@@ -78,7 +77,6 @@ public class AgentService : ServiceBase
         try
         {
             await _ws.ConnectAsync(new Uri(_wsUrl), token);
-            _isConnected = true;
             _reconnectDelayMs = 1000;
             Console.WriteLine($"{DateTime.UtcNow:O} Connected!");
 
@@ -107,6 +105,11 @@ public class AgentService : ServiceBase
 
             if (elapsed >= HeartbeatIntervalMs)
             {
+                if (_ws == null || _ws.State != WebSocketState.Open)
+                {
+                    throw new InvalidOperationException("WebSocket is not open");
+                }
+
                 try
                 {
                     await _ws.SendAsync(
