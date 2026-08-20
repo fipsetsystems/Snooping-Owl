@@ -31,11 +31,12 @@ jobs:
       - name: Build Agent
         run: dotnet build agent/agent.csproj --configuration Release --no-restore
 
-      - name: Publish Agent (single-file exe)
+      - name: Publish Agent (single-file, self-contained exe)
         run: |
           dotnet publish agent/agent.csproj `
-            -c Release -r win-x86 --self-contained false `
-            -p:PublishSingleFile=true -o published
+            -c Release -r win-x86 --self-contained true `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o published
 
       - name: Upload Agent Artifact
         uses: actions/upload-artifact@v4
