@@ -1,6 +1,21 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# SnoopingOwl Agent - Phase 1
-Project("agent/agent.csproj") = "SnoopingOwl.Agent"
-    ProjectSection = postProject
-        Formation = {A36BBA67-8E17-4A6B-APPENDIX}
-    EndProjectSection
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SnoopingOwl.Agent", "agent\agent.csproj", "{8E3B6A2C-4D5F-4A1E-9B3C-2D7F1A5E8C4B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8E3B6A2C-4D5F-4A1E-9B3C-2D7F1A5E8C4B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E3B6A2C-4D5F-4A1E-9B3C-2D7F1A5E8C4B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E3B6A2C-4D5F-4A1E-9B3C-2D7F1A5E8C4B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E3B6A2C-4D5F-4A1E-9B3C-2D7F1A5E8C4B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
