@@ -1,9 +1,7 @@
-using System;
 using System.Net.WebSockets;
 using System.ServiceProcess;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace SnoopingOwl.Agent;
 
@@ -14,31 +12,36 @@ public class AgentService : ServiceBase
     private readonly string _wsUrl;
     private int _reconnectDelayMs = 1000;
     private DateTime _lastHeartbeat = DateTime.UtcNow;
+    private UpdateChecker? _updateChecker;
+
     private const int HeartbeatIntervalMs = 30000;
     private const int MaxReconnectDelayMs = 30000;
 
     public AgentService()
     {
         ServiceName = "SnoopingOwlAgent";
-        _wsUrl = Program.WsUrl;
+        _wsUrl = Configuration.BackendUrl;
+        _updateChecker = new UpdateChecker();
     }
 
     protected override void OnStart(string[] args)
     {
-        Console.WriteLine($"{DateTime.UtcNow:O} Agent service starting... URL={_wsUrl}");
-        _ = Task.Run(() => ConnectionLoop(_cts.Token));
+        AgentLog.Info($"Agent service starting... URL={_wsUrl}");
+
+        _ = Task.Run(() => StartAsync(_cts.Token));
         base.OnStart(args);
     }
 
     protected override void OnStop()
     {
-        Console.WriteLine($"{DateTime.UtcNow:O} Agent service stopping...");
+        AgentLog.Info("Agent service stopping...");
         _cts.Cancel();
         base.OnStop();
     }
 
     public async Task StartAsync(CancellationToken token)
     {
+        _ = _updateChecker!.RunLoopAsync(token);
         await ConnectionLoop(token);
     }
 
@@ -56,12 +59,12 @@ public class AgentService : ServiceBase
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{DateTime.UtcNow:O} Connection error: {ex.Message}");
+                AgentLog.Error($"Connection error: {ex.Message}", ex);
             }
 
             if (!token.IsCancellationRequested)
             {
-                Console.WriteLine($"{DateTime.UtcNow:O} Reconnecting in {_reconnectDelayMs}ms...");
+                AgentLog.Warn($"Reconnecting in {_reconnectDelayMs}ms...");
                 await Task.Delay(_reconnectDelayMs, token);
                 _reconnectDelayMs = Math.Min(MaxReconnectDelayMs, _reconnectDelayMs * 2);
             }
@@ -70,18 +73,20 @@ public class AgentService : ServiceBase
 
     private async Task ConnectAndRunAsync(CancellationToken token)
     {
-        Console.WriteLine($"{DateTime.UtcNow:O} Connecting to {_wsUrl}...");
-
+        AgentLog.Info($"Connecting to {_wsUrl}...");
         _ws = new ClientWebSocket();
 
         try
         {
             await _ws.ConnectAsync(new Uri(_wsUrl), token);
             _reconnectDelayMs = 1000;
-            Console.WriteLine($"{DateTime.UtcNow:O} Connected!");
+            AgentLog.Info("Connected!");
 
             await SendAsync("{\"type\":\"agent-connect\",\"machineId\":\"placeholder-pc-01\"}");
+
+            var receive = ReceiveLoopAsync(token);
             await HeartbeatLoop(token);
+            await receive;
         }
         catch (OperationCanceledException)
         {
@@ -89,8 +94,59 @@ public class AgentService : ServiceBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{DateTime.UtcNow:O} Failed to connect: {ex.Message}");
+            AgentLog.Error($"Failed to connect: {ex.Message}", ex);
             throw;
+        }
+    }
+
+    private async Task ReceiveLoopAsync(CancellationToken token)
+    {
+        var buffer = new byte[16 * 1024];
+        while (!token.IsCancellationRequested && _ws?.State == WebSocketState.Open)
+        {
+            WebSocketReceiveResult result;
+            try
+            {
+                result = await _ws.ReceiveAsync(new ArraySegment<byte>(buffer), token);
+            }
+            catch (WebSocketException)
+            {
+                throw; // connection lost - outer loop reconnects
+            }
+
+            if (result.MessageType == WebSocketMessageType.Close)
+            {
+                throw new WebSocketException(WebSocketError.NotAWebSocket, "Server closed the connection");
+            }
+
+            var text = Encoding.UTF8.GetString(buffer, 0, result.Count);
+            HandleMessage(text);
+        }
+    }
+
+    private void HandleMessage(string text)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(text);
+            if (!doc.RootElement.TryGetProperty("type", out var typeEl))
+            {
+                return;
+            }
+
+            switch (typeEl.GetString())
+            {
+                case "update-available":
+                    _updateChecker?.TriggerImmediate();
+                    break;
+                default:
+                    AgentLog.Info($"Unknown server message type: {typeEl.GetString()}");
+                    break;
+            }
+        }
+        catch (JsonException)
+        {
+            AgentLog.Warn("Malformed JSON from server - ignored.");
         }
     }
 
@@ -118,7 +174,6 @@ public class AgentService : ServiceBase
                         true,
                         token);
                     _lastHeartbeat = now;
-                    Console.WriteLine($"{DateTime.UtcNow:O} Heartbeat sent");
                 }
                 catch
                 {
@@ -144,7 +199,4 @@ public class AgentService : ServiceBase
             true,
             CancellationToken.None);
     }
-
-    public void ReportOnline() => Console.WriteLine($"[{DateTime.UtcNow:O}] Agent online");
-    public void ReportOffline() => Console.WriteLine($"[{DateTime.UtcNow:O}] Agent offline");
 }

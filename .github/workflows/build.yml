@@ -11,10 +11,16 @@ permissions:
   contents: write
   id-token: write
 
+env:
+  VERSION: 1.0.${{ github.run_number }}
+
 jobs:
   build-agent:
-    name: Build .NET Agent
+    name: Build .NET Agent + Updater
     runs-on: windows-latest
+    outputs:
+      sha256: ${{ steps.sha.outputs.sha256 }}
+      version: ${{ steps.sha.outputs.version }}
 
     steps:
       - name: Checkout repository
@@ -26,17 +32,33 @@ jobs:
           dotnet-version: 8.x
 
       - name: Restore dependencies
-        run: dotnet restore agent/agent.csproj
+        run: |
+          dotnet restore agent/agent.csproj
+          dotnet restore agent/updater/Updater.csproj
 
-      - name: Build Agent
-        run: dotnet build agent/agent.csproj --configuration Release --no-restore
-
-      - name: Publish Agent (single-file, self-contained exe)
+      - name: Publish Agent (single-file, self-contained, versioned)
         run: |
           dotnet publish agent/agent.csproj `
             -c Release -r win-x86 --self-contained true `
             -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:Version=$env:VERSION `
             -o published
+
+      - name: Publish Updater (single-file, self-contained, versioned)
+        run: |
+          dotnet publish agent/updater/Updater.csproj `
+            -c Release -r win-x86 --self-contained true `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:Version=$env:VERSION `
+            -o published
+
+      - name: Compute SHA-256 of agent exe
+        id: sha
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash published\SnoopingOwl.Agent.exe -Algorithm SHA256).Hash.ToLower()
+          Write-Output "sha256=$hash" >> $env:GITHUB_OUTPUT
+          Write-Output "version=$env:VERSION" >> $env:GITHUB_OUTPUT
 
       - name: Upload Agent Artifact
         uses: actions/upload-artifact@v4
@@ -63,17 +85,26 @@ jobs:
       - name: Create Auto Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0-${{ github.run_number }}
-          name: "SnoopingOwl v1.0.0"
+          tag_name: v${{ needs.build-agent.outputs.version }}
+          name: "SnoopingOwl v${{ needs.build-agent.outputs.version }}"
           body: |
-            ## SnoopingOwl v1.0.0
+            ## SnoopingOwl v${{ needs.build-agent.outputs.version }}
 
             ### Auto-generated release on push to main
 
+            ### Artifacts
+            - `SnoopingOwl.Agent.exe` - the Windows service agent (self-contained, no .NET needed)
+            - `SnoopingOwl.Updater.exe` - the auto-update helper (used by the agent)
+
+            ### Update integrity (rule 30)
+            SHA-256 of `SnoopingOwl.Agent.exe`: `${{ needs.build-agent.outputs.sha256 }}`
+
             ### How to test
             1. Run the backend: `node server.js`
-            2. Run the agent: `published\SnoopingOwl.Agent.exe /runasconsole`
+            2. Run the agent: `SnoopingOwl.Agent.exe /runasconsole`
             3. View connection events in both consoles
 
           draft: false
-          files: published/SnoopingOwl.Agent.exe
+          files: |
+            published/SnoopingOwl.Agent.exe
+            published/SnoopingOwl.Updater.exe

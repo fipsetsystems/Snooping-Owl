@@ -4,6 +4,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SnoopingOwl.Agent", "agent\agent.csproj", "{8E3B6A2C-4D5F-4A1E-9B3C-2D7F1A5E8C4B}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SnoopingOwl.Updater", "agent\updater\Updater.csproj", "{5A9D2C7B-3E8A-4B0D-A6C1-9F4E2B7D1A6C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,6 +16,10 @@ Global
 		{8E3B6A2C-4D5F-4A1E-9B3C-2D7F1A5E8C4B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8E3B6A2C-4D5F-4A1E-9B3C-2D7F1A5E8C4B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8E3B6A2C-4D5F-4A1E-9B3C-2D7F1A5E8C4B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A9D2C7B-3E8A-4B0D-A6C1-9F4E2B7D1A6C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A9D2C7B-3E8A-4B0D-A6C1-9F4E2B7D1A6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A9D2C7B-3E8A-4B0D-A6C1-9F4E2B7D1A6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A9D2C7B-3E8A-4B0D-A6C1-9F4E2B7D1A6C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

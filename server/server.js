@@ -10,6 +10,21 @@ const agents = new Set();
 
 fastify.get('/health', async () => ({ status: 'ok' }));
 
+// Force-update signal: admin triggers it, server broadcasts to all agents.
+// Agent receives {"type":"update-available"} over WSS and updates immediately.
+fastify.post('/force-update', async (request, reply) => {
+  const message = JSON.stringify({ type: 'update-available' });
+  let sent = 0;
+  for (const socket of agents) {
+    if (socket.readyState === 1) {
+      socket.send(message);
+      sent++;
+    }
+  }
+  console.log(`Force-update broadcast to ${sent} agent(s)`);
+  return { broadcast: sent };
+});
+
 fastify.get('/ws', { websocket: true }, (connection, request) => {
   agents.add(connection.socket);
 

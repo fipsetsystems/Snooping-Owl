@@ -12,4 +12,9 @@
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- updater is a separate project; exclude its sources from the agent -->
+    <Compile Remove="updater\**\*.cs" />
+  </ItemGroup>
+
 </Project>
